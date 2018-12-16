@@ -3,7 +3,7 @@
 
     <groupId>com.github.f4irline</groupId>
     <artifactId>ezparser</artifactId>
-    <version>1.0.0</version>
+    <version>1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -45,11 +45,10 @@
 
 
     <scm>
-        <connection>scm:git:git://github.com/simpligility/ossrh-demo.git</connection>
-        <developerConnection>scm:git:ssh://github.com:simpligility/ossrh-demo.git</developerConnection>
+        <connection>scm:git:git://github.com/f4irline/EzParser.git</connection>
+        <developerConnection>scm:git:ssh://github.com/f4irline/EzParser.git</developerConnection>
         <url>https://github.com/f4irline/EzParser</url>
-      <tag>1.0.0</tag>
-  </scm>
+    </scm>
 
     <build>
         <pluginManagement>
