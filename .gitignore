@@ -1,9 +1,6 @@
 # Compiled class file
 *.class
 
-# Compiled folder
-target
-
 # Log file
 *.log
 
