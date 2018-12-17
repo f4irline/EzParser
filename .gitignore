@@ -4,6 +4,9 @@
 # Log file
 *.log
 
+# Backup file from maven deployment
+pom.xml.versionsBackup
+
 # BlueJ files
 *.ctxt
 
