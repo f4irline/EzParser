@@ -100,13 +100,18 @@ public class JSONStringifier {
     }
 
     /**
-     * Removes an item from the JSON.
+     * Removes an object from the JSON.
      * 
      * <p>
      * First it changes the key to be a String and compares it in
      * whole ArrayList which holds the .json file data. If a match is found,
-     * it defines the index of the item to be removed to be that one. Then 
-     * it removes it using the index from the ArrayList.
+     * it uses checkObjectBoundaries(index) method to check where the object 
+     * (which holds that index) starts and ends.
+     * </p>
+     * 
+     * <p>
+     * After getting the boundaries fo the object, it loops through the lines ArrayList
+     * again from the object's end to object's start, removing the lines between.
      * </p>
      * 
      * <p>
@@ -123,37 +128,64 @@ public class JSONStringifier {
      * @param id - the key of the item which will be deleted from the JSON.
      * @param jsonWriter - the object which holds all the means to write to the .json file.
      */
-    public void removeItemFromJSON(int id, JSONWriter jsonWriter) {
-        int removeIndex = 0;
+    public void removeObjectFromJSON(int id, JSONWriter jsonWriter) {
         int index = 0;
         String idString = Integer.toString(id);
+        int[] objectBounds = null;
 
         // Iterate through all the lines and check
         // in which index is the object to be removed.
         for (String line : lines) {
             index++;
             if (line.contains(idString)) {
-                removeIndex = index;
+                // identifier found, ask for the object's boundaries.
+                objectBounds = checkObjectBoundaries(index);
+                break;
             }
         }
 
-        // Positions to remove lines from.
-        int objectStartIndex = removeIndex - 2;
-        int idIndex = removeIndex - 1;
-        int itemIndex = removeIndex;
-        int amountIndex = removeIndex + 1;
-        int objectEndIndex = removeIndex + 2;
+        int objectStartIndex = objectBounds[0];
+        int objectEndIndex = objectBounds[1];
 
-        // Remove lines from the defined positions.
-        lines.remove(objectEndIndex);
-        lines.remove(amountIndex);
-        lines.remove(itemIndex);
-        lines.remove(idIndex);
-        lines.remove(objectStartIndex);
+        // Iterate the lines starting from the end of the object to the start of the object.
+        // Remove all the lines between there.
+        for (int i = objectEndIndex; i >= objectStartIndex; i--) {
+            lines.remove(i);
+        }
 
         int[] listBoundaries = checkListBoundaries();
 
         jsonWriter.writeToJSON(lines, listBoundaries[0], listBoundaries[1]-2);
+    }
+
+    /**
+     * Checks the to-be-removed object's boundaries.
+     * 
+     * @param index - the to-be-removed object's identifier's index in the lines ArrayList.
+     * @return - the boundaries of the object in an array.
+     */
+    private int[] checkObjectBoundaries(int index) {
+        int objectStartIndex = 0;
+        int objectEndIndex = 0;
+        int[] boundArray = new int [2];
+        for (int i = index; i > 0; i--) {
+            if (lines.get(i).equals("{")) {
+                objectStartIndex = i;
+                break;
+            }
+        }
+
+        for (int i = index; i < lines.size(); i++) {
+            if (lines.get(i).equals("}")) {
+                objectEndIndex = i;
+                break;
+            }
+        }
+
+        boundArray[0] = objectStartIndex;
+        boundArray[1] = objectEndIndex;
+
+        return boundArray;
     }
 
     /**
@@ -224,6 +256,113 @@ public class JSONStringifier {
 
         // Call JSONWriter to write the content of the "lines" ArrayList to the JSON.
         jsonWriter.writeToJSON(lines, listBoundaries[0], objectEndIndex);
+    }
+
+    /**
+     * Handles changing the object's value.
+     * 
+     * <p>
+     * The method first finds the object by searching for it's integer identifier.
+     * After finding the object, it searches for the index of the key which's value
+     * is going to be changed from the "lines" ArrayList.
+     * </p>
+     * 
+     * <p>
+     * After finding the index of the key (and the value therefore), it removes the
+     * line altogether and applies the new value to it.
+     * </p>
+     * 
+     * @param key - the key of the value to be changed.
+     * @param value - the new value.
+     * @param id - the integer identifier of the object which's value is to be changed.
+     * @param jsonWriter - FileWriter which handles the writing to the JSON file.
+     * @return - true if succesful (if the key was found from the object), false if the key was not found from the object.
+     */
+    public boolean changeObjectValue(Object key, Object value, int id, JSONWriter jsonWriter) {
+        int index = 0;
+        int objectIdentifierIndex = 0;
+        int keyIndex = -1;
+        String idString = Integer.toString(id);
+
+        // Iterate through all the lines and check
+        // in which index is the object to be removed.
+        for (String line : lines) {
+            index++;
+            if (line.contains(idString)) {
+                // identifier found, ask for the object's boundaries.
+                objectIdentifierIndex = index;
+                break;
+            }
+        }
+
+        // Find the index of the key-value pair in the ArrayList.
+        keyIndex = findObjectKey(key, objectIdentifierIndex);
+
+        // keyIndex is initially -1, so if it hasn't been changed from the findObjectKey() method,
+        // we know that the key was not found and we return false. If it was found, it will be 
+        // of value 0 or more so we can use that to write the new value in.
+        if (keyIndex > -1) {
+            writeNewValue(key, value, keyIndex, jsonWriter);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Finds the index of the key-value pair which is going to be changed.
+     * 
+     * @param key - the key which's value will be changed.
+     * @param objectIdentifierIndex - the identifier index of the object which's value will be changed.
+     * @return - the index of the key-value pair if found, -1 if not found.
+     */
+    private int findObjectKey(Object key, int objectIdentifierIndex) {
+        int[] objectBoundaries = checkObjectBoundaries(objectIdentifierIndex);
+
+        int objectStartIndex = objectBoundaries[0];
+        int objectEndIndex = objectBoundaries[1];
+
+        for (int i = objectIdentifierIndex; i > objectStartIndex; i--) {
+            if (lines.get(i).contains(key.toString())) {
+                return i;
+            }
+        }
+        
+        for (int i = objectIdentifierIndex; i < objectEndIndex; i++) {
+            if (lines.get(i).contains(key.toString())) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /**
+     * Writes new value of the key-value pair to the JSON.
+     * 
+     * @param key - the key of the value which will be changed.
+     * @param value - the new value, which will be changed.
+     * @param keyIndex - the index of the key-value pair, which will be changed.
+     * @param jsonWriter - the FileWriter which handles writing to the JSON.
+     */
+    private void writeNewValue(Object key, Object value, int keyIndex, JSONWriter jsonWriter) {
+        String newValue = "";
+        // If the value is a string variable, add quotations to it for proper JSON formatting.
+        if (value instanceof String) {
+            newValue = "\""+value.toString()+"\"";
+        } else {
+            newValue = value.toString();
+        }
+        // Creating the new line.
+        String line = "\""+key.toString()+"\""+" : "+newValue;
+
+        // Remove the old line and add the new line to replace it.
+        lines.remove(keyIndex);
+        lines.add(keyIndex, line);
+
+        // Check the list's boundaries and rewrite it to JSON.
+        int[] listBoundaries = checkListBoundaries();
+        jsonWriter.writeToJSON(lines, listBoundaries[0], listBoundaries[1]-2);
     }
 
     /**
